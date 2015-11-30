@@ -750,6 +750,10 @@ void init()
 	
 }
 
+void reshape(int width, int height)
+{
+	glViewport(0,0,width, height);
+}
 #pragma endregion
 
 int main(int argc, char** argv)
@@ -785,6 +789,7 @@ int main(int argc, char** argv)
 	glutMouseFunc(mouse);
 	glutMotionFunc(mouseMotion);
 	glutIdleFunc(idle);
+	glutReshapeFunc(reshape);
 
 	//Transfer the control to glut processing loop.
 	glutMainLoop();
