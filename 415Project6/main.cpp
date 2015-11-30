@@ -45,35 +45,29 @@ struct Collision
 
 #define SCREEN_WIDTH 1920.0f
 #define SCREEN_HEIGHT 1080.0f
-#define NUM_OBJECTS 2
-#define INDECIES 10000
 #define ZERO_VECTOR gmtl::Vec3f(0,0,0);
 
 int mouseX, mouseY,
 mouseDeltaX, mouseDeltaY,
-ambientFlag, diffuseFlag, specFlag, texFlag, floorTexFlag, ballTexFlag, 
 simStep;
 
 bool hit, c_tableCenter, c_cueFollow, c_cue;
 
-float azimuth, elevation, ballRadius, ballDiameter, floorY, cameraZFactor,
-		nearValue, farValue, leftValue, rightValue, topValue, bottomValue,
-		ballSpec, ballShine, floorSpec, floorShine,
-		drag, restitutionBall, restitutionWall, hitScale, delta;
+float azimuth, elevation, ballRadius, ballDiameter, cameraZFactor,
+		drag, restitutionBall, restitutionWall, hitScale, delta,
+		nearValue, farValue, topValue, bottomValue, leftValue, rightValue;
 
 
-GLuint program, Matrix_loc, vertposition_loc, normal_loc, modelview_loc,
-		lightPosition_loc, specCoefficient_loc, upVector_loc, 
-		ambientLight_loc, diffuseLight_loc, specularLight_loc, shine_loc,
-		ambientFlag_loc, diffuseFlag_loc, specularFlag_loc, texFlag_loc,
-		vertex_UV, texture_location, NormalMatrix;
+GLuint program,
+		lightPosition_loc, ambientLight_loc, diffuseLight_loc, specularLight_loc, 
+		texture_location, NormalMatrix;
 
 GLenum errCode;
 
 const GLubyte *errString;
 
 
-gmtl::Matrix44f view, modelView, viewScale, camera, projection, normalMatrix,
+gmtl::Matrix44f view, projection,
 				elevationRotation, azimuthRotation, cameraZ, viewRotation, cameraTrans;
 
 
@@ -476,6 +470,8 @@ void renderGraph(std::vector<SceneObject*> graph, gmtl::Matrix44f mv)
 	
 	if(!graph.empty())
 	{
+
+
 		for (int i = 0; i < graph.size(); ++i)
 		{
 	
@@ -484,15 +480,12 @@ void renderGraph(std::vector<SceneObject*> graph, gmtl::Matrix44f mv)
 			
 			glUniformMatrix4fv(NormalMatrix, 1, GL_FALSE, &viewRotation[0][0]);
 			
-
 			lightPoint = mv * lightPosition;
 			glUniform3f(lightPosition_loc, lightPoint[0], lightPoint[1], lightPoint[2]);
-			
-			
-			
 			glUniform3f(ambientLight_loc, 1.0f, 1.0f, 1.0f);
 			glUniform3f(diffuseLight_loc, 1.0f, 1.0f, 1.0f);
 			glUniform3f(specularLight_loc, 1.0f, 1.0f, 1.0f);
+			
 
 			graph[i]->Draw(mv, projection);
 
@@ -648,6 +641,8 @@ void display()
 	// Clear the color and depth buffers
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+
+
 	renderGraph(sceneGraph, view);
 	//Ask GL to execute the commands from the buffer
 	glutSwapBuffers();	// *** if you are using GLUT_DOUBLE, use glutSwapBuffers() instead 
@@ -683,12 +678,12 @@ void init()
 {
 
 	elevation = azimuth = 0;
-	ballRadius = floorY = 4.0f;
+	ballRadius = 4.0f;
 	ballDiameter = ballRadius * 2.0f;
 	hit = c_tableCenter = c_cueFollow = c_cue = false;
 	hitScale = 3.0f;
-	ballShine = floorShine = drag = 0.1f;
-	ballSpec = floorSpec = restitutionBall = restitutionWall = 0.2f;
+	drag = 0.1f;
+	restitutionBall = restitutionWall = 0.2f;
 	simStep = 1;
 
 	delta = 1.0f;
@@ -707,9 +702,6 @@ void init()
 	glUseProgram(program);
 
 	//Get the shader parameter locations for passing data to shaders
-	
-	
-	
 	NormalMatrix = glGetUniformLocation(program, "NormalMatrix");
 	lightPosition_loc = glGetUniformLocation(program, "lightPosition");
 	
@@ -725,7 +717,6 @@ void init()
 	
 
 	gmtl::identity(view);
-	gmtl::identity(modelView);
 	gmtl::identity(viewRotation);
 	gmtl::identity(cameraTrans);
 
@@ -737,13 +728,6 @@ void init()
 	bottomValue = topValue * -1.0f;
 	rightValue = 1.0f;
 	leftValue = -1.0f;
-	
-	normalMatrix.set(
-		1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, 1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, -1.0f, 0.0f,
-		0.0f, 0.0f, 0.0f, 1.0f
-		);
 
 	projection.set(
 		((2.0f * nearValue) / (rightValue - leftValue)), 0.0f, ((rightValue + leftValue) / (rightValue - leftValue)), 0.0f,
@@ -763,8 +747,6 @@ void init()
 	cameraRotate();
 
 	buildGraph();
-
-	ambientFlag = diffuseFlag = specFlag = texFlag = ballTexFlag = floorTexFlag = 1;
 	
 }
 
