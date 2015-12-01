@@ -6,14 +6,15 @@ SceneObject::SceneObject()
 {
 
 }
-
+SceneObject::SceneObject(string objectFile, gmtl::Vec3f dimensions, GLuint program) : SceneObject(objectFile, dimensions[0], dimensions[1], dimensions[2], program)
+{}
 SceneObject::SceneObject(string objectFile, float length, float width, float depth, GLuint program)
 {
 	this->length = length;
 	this->width = width;
 	this->depth = depth;
 	this->radius = 0;
-	
+
 
 	this->scale = gmtl::makeScale<gmtl::Matrix44f>(gmtl::Vec3f(this->length, this->width, this->depth));
 	this->scale.setState(gmtl::Matrix44f::AFFINE);
@@ -37,7 +38,17 @@ SceneObject::SceneObject(string objectFile, float radius, GLuint program)
 	this->Init();
 
 }
+SceneObject::SceneObject(string objectFile, float radius, float height, GLuint program)
+{
+	this->radius = radius;
+	this->width = height;
+	this->scale = gmtl::makeScale<gmtl::Matrix44f>(gmtl::Vec3f(this->radius, this->width, this->radius));
+	this->scale.setState(gmtl::Matrix44f::AFFINE | gmtl::Matrix44f::NON_UNISCALE);
 
+	this->VAO = VertexArrayObject(objectFile, program);
+
+	this->Init();
+}
 
 SceneObject::~SceneObject()
 {
@@ -137,7 +148,6 @@ void SceneObject::Move()
 
 	if (this->radius > 0)
 	{
-		
 		angle = (gmtl::length(d) / this->radius);
 		d = gmtl::makeNormal(gmtl::Vec3f(d[2], 0, -d[0]));
 		this->AddRotation(gmtl::Quatf(d[0] * sin(angle / 2), d[1] * sin(angle / 2), d[2] * sin(angle / 2), cos(angle / 2)));

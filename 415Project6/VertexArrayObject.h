@@ -26,6 +26,7 @@ class VertexArrayObject
 		~VertexArrayObject();
 
 		void GetData();
+		void BorstImport(string filename);
 
 		void GenerateSmoothNormals();
 		void GenerateSplitNormals();

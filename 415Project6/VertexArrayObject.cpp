@@ -15,14 +15,26 @@ VertexArrayObject::VertexArrayObject() {}
 VertexArrayObject::VertexArrayObject(string objectFile, GLuint program)
 {
 
-	BlendObj thisObj = BlendObj(objectFile);
+	std::size_t pos = objectFile.find(".");
+	string ext = objectFile.substr(pos);
 
-	this->verticies = thisObj.importedVerticies;
-	this->index_data = thisObj.importedIndexData;
+	if (ext == ".obj")
+	{
+		BlendObj thisObj = BlendObj(objectFile);
 
-	this->program = program;
+		this->verticies = thisObj.importedVerticies;
+		this->index_data = thisObj.importedIndexData;
 
-	this->GetData();
+		this->program = program;
+
+		this->GetData();
+	}
+	else if (ext == ".txt")
+	{
+		this->BorstImport(objectFile);
+	}
+
+	
 
 	this->matrix_loc = glGetUniformLocation(this->program, "Matrix");
 	this->vertposition_loc = glGetAttribLocation(this->program, "vertexPosition");
@@ -92,6 +104,50 @@ void VertexArrayObject::GetData()
 		this->uv_data.push_back(it->v);
 	}
 
+}
+
+void VertexArrayObject::BorstImport(string filename)
+{
+	ifstream fp;
+	int i = 0, j = 0, k = 0, numVerticies, numIndicies, numPolygons;
+
+	fp.open(filename, ios_base::in);
+
+	if (fp)
+	{
+
+		for (std::string line; std::getline(fp, line); ++i)
+		{
+			std::istringstream in(line);
+
+			if (i == 0)
+			{
+				in >> numVerticies;
+				this->vertex_data.resize(numVerticies * 3);
+				this->normal_data.resize(numVerticies * 3);
+				this->uv_data.resize(numVerticies * 2);
+			}
+			else if (i > 0 && i <= numVerticies)
+			{
+				in >> this->vertex_data[j] >> this->vertex_data[j + 1] >> this->vertex_data[j + 2] >> this->normal_data[j] >> this->normal_data[j + 1] >> this->normal_data[j + 2] >> this->uv_data[k] >> this->uv_data[k + 1];
+				j += 3;
+				k += 2;
+			}
+			else if (i == (numVerticies + 1))
+			{
+				in >> numPolygons;
+				this->index_data.resize(numPolygons * 3);
+				j = 0;
+			}
+			else if (i > (numVerticies + 1))
+			{
+				in >> numIndicies >> this->index_data[j] >> this->index_data[j + 1] >> this->index_data[j + 2];
+				j += 3;
+			}
+		}
+
+		fp.close();
+	}
 }
 
 void VertexArrayObject::GenerateSmoothNormals()

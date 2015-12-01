@@ -25,7 +25,9 @@ enum ObjectType
 	LEFT_WALL,
 	RIGHT_WALL,
 	FRONT_WALL,
-	BACK_WALL
+	BACK_WALL,
+	LEG,
+	TABLETOP
 
 };
 
@@ -49,9 +51,14 @@ class SceneObject
 public:
 
 	SceneObject();
+	SceneObject(string objectFile, gmtl::Vec3f dimensions, GLuint program);
 	SceneObject(string objectFile, float length, float width, float depth, GLuint program);
 	SceneObject(string objectFile,
 				float radius,
+				GLuint program);
+	SceneObject(string objectFile,
+				float radius,
+				float height,
 				GLuint program);
 	~SceneObject();
 

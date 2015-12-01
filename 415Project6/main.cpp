@@ -175,33 +175,33 @@ Texture LoadTexture(char* filename)
 }
 
 // TODO Generalize this.
-SceneObject* AddWall(int i)
+SceneObject* AddWall(int i, gmtl::Vec3f floorDimensions)
 {
 	SceneObject* wall = new SceneObject();
-
+	float wallHeight = 50.0f;
 	switch (i)
 	{
 		case 0:
-			wall = new SceneObject("OBJs/cube.obj", ballDiameter * 10.0f, ballDiameter+2.0f, ballDiameter, program);
-			wall->AddTranslation(gmtl::Vec3f(0.0f, 0.0f, ((ballDiameter * 10.0f)*2.0f) + 2.0f));
+			wall = new SceneObject("OBJs/cube.obj", floorDimensions[0] + (ballDiameter*2), wallHeight, ballDiameter, program);
+			wall->AddTranslation(gmtl::Vec3f(0.0f, wallHeight, floorDimensions[2] + ballDiameter));
 			wall->type = BACK_WALL;
 			break;
 
 		case 1:
-			wall = new SceneObject("OBJs/cube.obj", ballDiameter * 10.0f, ballDiameter + 2.0f, ballDiameter, program);
-			wall->AddTranslation(gmtl::Vec3f(0.0f, 0.0f, (-(ballDiameter * 10.0f)*2.0f) - 2.0f));
+			wall = new SceneObject("OBJs/cube.obj", floorDimensions[0] + (ballDiameter * 2), wallHeight, ballDiameter, program);
+			wall->AddTranslation(gmtl::Vec3f(0.0f, wallHeight, -floorDimensions[2]  - ballDiameter));
 			wall->type = FRONT_WALL;
 			break;
 
 		case 2:
-			wall = new SceneObject("OBJs/cube.obj", ballDiameter, ballDiameter + 2.0f, (ballDiameter * 10.0f)*2.0f, program);
-			wall->AddTranslation(gmtl::Vec3f((ballDiameter * 10.0f)+ 2.0f, 0.0f, 0.0f));
+			wall = new SceneObject("OBJs/cube.obj", ballDiameter, wallHeight, floorDimensions[2], program);
+			wall->AddTranslation(gmtl::Vec3f(floorDimensions[0] + ballDiameter, wallHeight, 0.0f));
 			wall->type = RIGHT_WALL;
 			break;
 
 		case 3:
-			wall = new SceneObject("OBJs/cube.obj", ballDiameter, ballDiameter + 2.0f, (ballDiameter * 10.0f)*2.0f, program);
-			wall->AddTranslation(gmtl::Vec3f((-(ballDiameter * 10.0f)) - 2.0f, 0.0f, 0.0f));
+			wall = new SceneObject("OBJs/cube.obj", ballDiameter, wallHeight, floorDimensions[2], program);
+			wall->AddTranslation(gmtl::Vec3f(-floorDimensions[0] - ballDiameter, wallHeight, 0.0f));
 			wall->type = LEFT_WALL;
 			break;
 	}
@@ -209,11 +209,62 @@ SceneObject* AddWall(int i)
 	wall->parent = NULL;
 	wall->children.clear();
 	wall->SetTexture(LoadTexture("textures/dirt.ppm"));
-	wall->AddTranslation(gmtl::Vec3f(0.0f, 9.0f, 0.0f));
-
-
-
 	return wall;
+}
+
+void buildTable(gmtl::Vec3f floorDimensions)
+{
+	float legHeight = 20.0f,
+		legY = (floorDimensions[1] * 2.0f) + legHeight, //Y
+		tableWidth = 25.0f,  //X
+		tableLength = 25.0f; //Z
+
+	SceneObject* tableTop = new SceneObject("OBJs/cube.obj", tableWidth, floorDimensions[1], tableLength, program);
+	tableTop->AddTranslation(gmtl::Vec3f(0.0f, legY+floorDimensions[1]+legHeight, 0.0f));
+	tableTop->type = TABLETOP;
+	tableTop->parent = NULL;
+	tableTop->SetTexture(LoadTexture("textures/dirt.ppm"));
+	tableTop->children.clear();
+
+	sceneGraph.push_back(tableTop);
+
+	SceneObject* brleg = new SceneObject("OBJs/cylinder.obj", ballRadius, legHeight, program);
+	brleg->AddTranslation(gmtl::Vec3f(tableWidth - ballRadius, legY, -(tableWidth - ballRadius)));
+	brleg->type = LEG;
+	brleg->parent = NULL;
+	brleg->SetTexture(LoadTexture("textures/dirt.ppm"));
+	brleg->children.clear();
+
+	sceneGraph.push_back(brleg);
+
+	SceneObject* blleg = new SceneObject("OBJs/cylinder.obj", ballRadius, legHeight, program);
+	blleg->AddTranslation(gmtl::Vec3f(-(tableWidth - ballRadius), legY, -(tableWidth - ballRadius)));
+	blleg->type = LEG;
+	blleg->parent = NULL;
+	blleg->SetTexture(LoadTexture("textures/dirt.ppm"));
+	blleg->children.clear();
+
+	sceneGraph.push_back(blleg);
+
+	SceneObject* frleg = new SceneObject("OBJs/cylinder.obj", ballRadius, legHeight, program);
+	frleg->AddTranslation(gmtl::Vec3f(tableWidth - ballRadius, legY, tableWidth - ballRadius));
+	frleg->type = LEG;
+	frleg->parent = NULL;
+	frleg->SetTexture(LoadTexture("textures/dirt.ppm"));
+	frleg->children.clear();
+
+	sceneGraph.push_back(frleg);
+
+	SceneObject* flleg = new SceneObject("OBJs/cylinder.obj", ballRadius, legHeight, program);
+	flleg->AddTranslation(gmtl::Vec3f(-(tableWidth - ballRadius), legY, tableWidth - ballRadius));
+	flleg->type = LEG;
+	flleg->parent = NULL;
+	flleg->SetTexture(LoadTexture("textures/dirt.ppm"));
+	flleg->children.clear();
+
+	sceneGraph.push_back(flleg);
+
+
 }
 
 void buildGraph()
@@ -222,8 +273,8 @@ void buildGraph()
 	SceneObject* ball = new SceneObject("OBJs/smoothSphere.obj", ballRadius, program);
 	SceneObject* ball2 = new SceneObject("OBJs/smoothSphere.obj", ballRadius, program);
 	SceneObject* ball3 = new SceneObject("OBJs/smoothSphere.obj", ballRadius, program);
-
-	SceneObject* floor = new SceneObject("OBJs/cube.obj", ballDiameter * 10.0f, 1.0f, (ballDiameter * 10.0f)*2.0f, program);
+	gmtl::Vec3f floorDimensions = gmtl::Vec3f(150.0f, 5.0f, 150.0f);
+	SceneObject* floor = new SceneObject("OBJs/cube.obj", floorDimensions, program);
 	gmtl::Matrix44f initialTranslation;
 	gmtl::Quatf initialRotation;
 
@@ -233,7 +284,7 @@ void buildGraph()
 	ball->parent = NULL; 
 	ball->children.clear();
 
-	initialTranslation = gmtl::makeTrans<gmtl::Matrix44f>(gmtl::Vec3f(0.0f, ballRadius+1.0f, 100.0f));
+	initialTranslation = gmtl::makeTrans<gmtl::Matrix44f>(gmtl::Vec3f(0.0f, floorDimensions[1] + ballDiameter+1.0f, 100.0f));
 	initialTranslation.setState(gmtl::Matrix44f::TRANS);
 	ball->AddTranslation(initialTranslation);
 	ball->SetTexture(LoadTexture("textures/earth.ppm"));
@@ -241,52 +292,25 @@ void buildGraph()
 	ball->acceleration = ZERO_VECTOR;
 
 	sceneGraph.push_back(ball);
-
-	//Ball 2
-	ball2->type = BALL;
-	ball2->parent = NULL;
-	ball2->children.clear();
-	initialTranslation = gmtl::makeTrans<gmtl::Matrix44f>(gmtl::Vec3f(0.0f, ballRadius + 1.0f, -100.0f));
-	initialTranslation.setState(gmtl::Matrix44f::TRANS);
-	ball2->AddTranslation(initialTranslation);
-	ball2->SetTexture(LoadTexture("textures/moonmap.ppm"));
-
-	//ball2->velocity = ZERO_VECTOR;
-	ball2->acceleration = ZERO_VECTOR;
-
-	sceneGraph.push_back(ball2);
-
-	//Ball 3
-	ball3->type = BALL;
-	ball3->parent = NULL;
-	ball3->children.clear();
-	initialTranslation = gmtl::makeTrans<gmtl::Matrix44f>(gmtl::Vec3f(0.0f, ballRadius + 1.0f, 0.0f));
-	initialTranslation.setState(gmtl::Matrix44f::TRANS);
-	ball3->AddTranslation(initialTranslation);
-	ball3->SetTexture(LoadTexture("textures/mars.ppm"));
-
-	ball3->acceleration = ZERO_VECTOR;
-
-	sceneGraph.push_back(ball3);
-
+	
 	//Floor
 	floor->type = FLOOR;
 	floor->parent = NULL;
 	floor->children.clear();
-	initialTranslation = gmtl::makeTrans<gmtl::Matrix44f>(gmtl::Vec3f(0.0f,-1.0f,0.0f));
+	initialTranslation = gmtl::makeTrans<gmtl::Matrix44f>(gmtl::Vec3f(0.0f,floorDimensions[1],0.0f));
 	initialTranslation.setState(gmtl::Matrix44f::TRANS);
-	//floor->AddTranslation(initialTranslation);
+	floor->AddTranslation(initialTranslation);
 	floor->SetTexture(LoadTexture("textures/carpet.ppm"));
 
 	sceneGraph.push_back(floor);
 
 	for (int i = 0; i < 4; ++i)
 	{
-
-		sceneGraph.push_back(AddWall(i));
+		sceneGraph.push_back(AddWall(i, floorDimensions));
 	}
 
-	
+	buildTable(floorDimensions);
+
 }
 
 
@@ -476,7 +500,6 @@ void renderGraph(std::vector<SceneObject*> graph, gmtl::Matrix44f mv)
 		{
 	
 			glBindVertexArray(graph[i]->VAO.vertexArray);
-			// Send a different transformation matrix to the shader
 			
 			glUniformMatrix4fv(NormalMatrix, 1, GL_FALSE, &viewRotation[0][0]);
 			
@@ -488,9 +511,6 @@ void renderGraph(std::vector<SceneObject*> graph, gmtl::Matrix44f mv)
 			
 
 			graph[i]->Draw(mv, projection);
-
-			
-
 		}
 	}
 	
@@ -635,25 +655,6 @@ void keyboard(unsigned char key, int x, int y)
 
 #pragma region "GLUT Functions"
 
-void display()
-{
-
-	// Clear the color and depth buffers
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-
-
-	renderGraph(sceneGraph, view);
-	//Ask GL to execute the commands from the buffer
-	glutSwapBuffers();	// *** if you are using GLUT_DOUBLE, use glutSwapBuffers() instead 
-
-	//Check for any errors and print the error string.
-	//NOTE: The string returned by gluErrorString must not be altered.
-	if ((errCode = glGetError()) != GL_NO_ERROR) {
-		errString = gluErrorString(errCode);
-		cout << "OpengGL Error: " << errString << endl;
-	}
-}
 
 void idle()
 {
@@ -749,7 +750,26 @@ void init()
 	buildGraph();
 	
 }
+void display()
+{
 
+	// Clear the color and depth buffers
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
+
+	renderGraph(sceneGraph, view);
+	//Ask GL to execute the commands from the buffer
+	glutSwapBuffers();	// *** if you are using GLUT_DOUBLE, use glutSwapBuffers() instead 
+
+	//Check for any errors and print the error string.
+	//NOTE: The string returned by gluErrorString must not be altered.
+	if ((errCode = glGetError()) != GL_NO_ERROR)
+	{
+		errString = gluErrorString(errCode);
+		cout << "OpengGL Error: " << errString << endl;
+	}
+}
 void reshape(int width, int height)
 {
 	glViewport(0,0,width, height);
@@ -775,7 +795,7 @@ int main(int argc, char** argv)
 	glutInitContextVersion(3, 3);
 	glutInitContextProfile(GLUT_CORE_PROFILE);
 
-	glutCreateWindow("415/515 CUBOID DEMO");
+	glutCreateWindow("415/515 DEMO");
 
 	glewExperimental = GL_TRUE;
 
