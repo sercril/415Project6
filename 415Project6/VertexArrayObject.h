@@ -41,7 +41,7 @@ class VertexArrayObject
 		GLuint vertexBuffer, colorBuffer, indexBuffer, uvBuffer, normalBuffer, 
 			vertposition_loc, vertcolor_loc, vertex_UV, textureLocation, normal_loc;
 
-		std::vector<GLfloat> vertex_data, uv_data, normal_data;
+		std::vector<GLfloat> vertex_data, uv_data, normal_data, tangent_data, bitangent_data;
 		
 
 };

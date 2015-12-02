@@ -15,8 +15,14 @@ VertexArrayObject::VertexArrayObject() {}
 VertexArrayObject::VertexArrayObject(string objectFile, GLuint program)
 {
 
+	this->vertex_data.clear();
+	this->normal_data.clear();
+	this->uv_data.clear();
+
 	std::size_t pos = objectFile.find(".");
 	string ext = objectFile.substr(pos);
+
+	this->program = program;
 
 	if (ext == ".obj")
 	{
@@ -25,7 +31,7 @@ VertexArrayObject::VertexArrayObject(string objectFile, GLuint program)
 		this->verticies = thisObj.importedVerticies;
 		this->index_data = thisObj.importedIndexData;
 
-		this->program = program;
+		
 
 		this->GetData();
 	}
@@ -87,9 +93,7 @@ VertexArrayObject::~VertexArrayObject()
 
 void VertexArrayObject::GetData()
 {
-	this->vertex_data.clear();
-	this->normal_data.clear();
-	this->uv_data.clear();
+	
 	for (std::vector<Vertex>::iterator it = this->verticies.begin(); it < this->verticies.end(); ++it)
 	{
 		this->vertex_data.push_back(it->position[0]);
@@ -126,10 +130,12 @@ void VertexArrayObject::BorstImport(string filename)
 				this->vertex_data.resize(numVerticies * 3);
 				this->normal_data.resize(numVerticies * 3);
 				this->uv_data.resize(numVerticies * 2);
+				this->tangent_data.resize(numVerticies * 3);
+				this->bitangent_data.resize(numVerticies * 3);
 			}
 			else if (i > 0 && i <= numVerticies)
 			{
-				in >> this->vertex_data[j] >> this->vertex_data[j + 1] >> this->vertex_data[j + 2] >> this->normal_data[j] >> this->normal_data[j + 1] >> this->normal_data[j + 2] >> this->uv_data[k] >> this->uv_data[k + 1];
+				in >> this->vertex_data[j] >> this->vertex_data[j + 1] >> this->vertex_data[j + 2] >> this->normal_data[j] >> this->normal_data[j + 1] >> this->normal_data[j + 2] >> this->uv_data[k] >> this->uv_data[k + 1] >> this->tangent_data[j] >> this->tangent_data[j+1] >> this->tangent_data[j+2] >> this->bitangent_data[j] >> this->bitangent_data[j+1] >> this->bitangent_data[j+2];
 				j += 3;
 				k += 2;
 			}

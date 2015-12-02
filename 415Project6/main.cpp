@@ -280,7 +280,7 @@ void buildTable(gmtl::Vec3f floorDimensions)
 void buildGraph()
 {
 	
-	SceneObject* ball = new SceneObject("OBJs/smoothSphere.obj", ballRadius, program);
+	SceneObject* ball = new SceneObject("OBJs/SphereFull.txt", ballRadius, program);
 	SceneObject* ball2 = new SceneObject("OBJs/smoothSphere.obj", ballRadius, program);
 	SceneObject* ball3 = new SceneObject("OBJs/smoothSphere.obj", ballRadius, program);
 	gmtl::Vec3f floorDimensions = gmtl::Vec3f(150.0f, 5.0f, 150.0f);
@@ -297,7 +297,7 @@ void buildGraph()
 	initialTranslation = gmtl::makeTrans<gmtl::Matrix44f>(gmtl::Vec3f(0.0f, floorDimensions[1] + ballDiameter+1.0f, 100.0f));
 	initialTranslation.setState(gmtl::Matrix44f::TRANS);
 	ball->AddTranslation(initialTranslation);
-	ball->SetTexture(LoadTexture("textures/earth.ppm"));
+	ball->SetTexture(LoadTexture("textures/Berry_Diffuse.ppm"));
 	//ball->velocity = ZERO_VECTOR;
 	ball->acceleration = ZERO_VECTOR;
 
@@ -889,8 +889,7 @@ void init()
 	cameraZ = gmtl::makeTrans<gmtl::Matrix44f>(gmtl::Vec3f(0.0f,0.0f,cameraZFactor));
 	cameraZ.setState(gmtl::Matrix44f::TRANS);
 	
-	//elevation = degreesToRadians(30.0f);
-	elevation = 0.0f;
+	elevation = degreesToRadians(30.0f);
 	azimuth = 0.0f;
 	
 	cameraRotate();
