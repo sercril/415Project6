@@ -51,11 +51,12 @@ int mouseX, mouseY,
 mouseDeltaX, mouseDeltaY,
 simStep;
 
-bool hit, c_tableCenter, c_cueFollow, c_cue;
+bool hit, c_tableCenter, c_cueFollow, c_cue, legballdist, bounce, attract;
 
 float azimuth, elevation, ballRadius, ballDiameter, cameraZFactor,
 		drag, restitutionBall, restitutionWall, hitScale, delta,
-		nearValue, farValue, topValue, bottomValue, leftValue, rightValue;
+		nearValue, farValue, topValue, bottomValue, leftValue, rightValue,
+		screenWidth, screenHeight;
 
 
 GLuint program,
@@ -67,16 +68,17 @@ GLenum errCode;
 const GLubyte *errString;
 
 
-gmtl::Matrix44f view, projection,
+gmtl::Matrix44f view, projection, originalView,
 				elevationRotation, azimuthRotation, cameraZ, viewRotation, cameraTrans;
 
+SceneObject *attractLeg, *hitBall;
 
 std::vector<SceneObject*> sceneGraph;
 std::vector<Vertex> ballData;
 std::vector<Collision> collsionList;
 gmtl::Point3f lightPosition, lightPoint;
 
-gmtl::Vec3f ballDelta;
+gmtl::Vec3f ballDelta, hitDirection;
 
 
 
@@ -121,14 +123,12 @@ void cameraRotate()
 		cameraTrans = gmtl::makeTrans<gmtl::Matrix44f>(sceneGraph[0]->GetPosition());
 	}
 	
-
-
 	viewRotation = azimuthRotation * elevationRotation;
 	gmtl::invert(viewRotation);
 
-	view = cameraTrans * azimuthRotation * elevationRotation * cameraZ;
+	originalView = cameraTrans * azimuthRotation * elevationRotation * cameraZ;
 
-	gmtl::invert(view);
+	view = gmtl::invert(originalView);
 
 	glutPostRedisplay();
 }
@@ -209,6 +209,7 @@ SceneObject* AddWall(int i, gmtl::Vec3f floorDimensions)
 	wall->parent = NULL;
 	wall->children.clear();
 	wall->SetTexture(LoadTexture("textures/dirt.ppm"));
+	wall->mass = FLT_MAX;
 	return wall;
 }
 
@@ -234,6 +235,8 @@ void buildTable(gmtl::Vec3f floorDimensions)
 	brleg->parent = NULL;
 	brleg->SetTexture(LoadTexture("textures/dirt.ppm"));
 	brleg->children.clear();
+	brleg->mass = FLT_MAX;
+	brleg->velocity = ZERO_VECTOR;
 
 	sceneGraph.push_back(brleg);
 
@@ -243,6 +246,8 @@ void buildTable(gmtl::Vec3f floorDimensions)
 	blleg->parent = NULL;
 	blleg->SetTexture(LoadTexture("textures/dirt.ppm"));
 	blleg->children.clear();
+	blleg->mass = FLT_MAX;
+	blleg->velocity = ZERO_VECTOR;
 
 	sceneGraph.push_back(blleg);
 
@@ -252,8 +257,11 @@ void buildTable(gmtl::Vec3f floorDimensions)
 	frleg->parent = NULL;
 	frleg->SetTexture(LoadTexture("textures/dirt.ppm"));
 	frleg->children.clear();
+	frleg->mass = FLT_MAX;
+	frleg->velocity = ZERO_VECTOR;
 
-	sceneGraph.push_back(frleg);
+	attractLeg = frleg;
+	sceneGraph.push_back(frleg);	
 
 	SceneObject* flleg = new SceneObject("OBJs/cylinder.obj", ballRadius, legHeight, program);
 	flleg->AddTranslation(gmtl::Vec3f(-(tableWidth - ballRadius), legY, tableWidth - ballRadius));
@@ -261,6 +269,8 @@ void buildTable(gmtl::Vec3f floorDimensions)
 	flleg->parent = NULL;
 	flleg->SetTexture(LoadTexture("textures/dirt.ppm"));
 	flleg->children.clear();
+	flleg->mass = FLT_MAX;
+	flleg->velocity = ZERO_VECTOR;
 
 	sceneGraph.push_back(flleg);
 
@@ -292,6 +302,20 @@ void buildGraph()
 	ball->acceleration = ZERO_VECTOR;
 
 	sceneGraph.push_back(ball);
+
+	//Ball 2
+	ball2->type = BALL;
+	ball2->parent = NULL;
+	ball2->children.clear();
+
+	initialTranslation = gmtl::makeTrans<gmtl::Matrix44f>(gmtl::Vec3f(75.0f, floorDimensions[1] + ballDiameter + 1.0f, 100.0f));
+	initialTranslation.setState(gmtl::Matrix44f::TRANS);
+	ball2->AddTranslation(initialTranslation);
+	ball2->SetTexture(LoadTexture("textures/earth.ppm"));
+	//ball->velocity = ZERO_VECTOR;
+	ball2->acceleration = ZERO_VECTOR;
+
+	sceneGraph.push_back(ball2);
 	
 	//Floor
 	floor->type = FLOOR;
@@ -316,7 +340,7 @@ void buildGraph()
 
 bool IsCollided(SceneObject* obj1, SceneObject* obj2)
 {
-	gmtl::Vec3f posDiff;
+	gmtl::Vec3f posDiff, legPos, ballPos;
 	float collisionDiff;
 
 	posDiff = obj2->GetPosition() - obj1->GetPosition();
@@ -370,7 +394,25 @@ bool IsCollided(SceneObject* obj1, SceneObject* obj2)
 
 	}
 	else if (obj1->type == BALL && obj2->type == BALL)
+	{		
+		if (gmtl::length(posDiff) < obj1->radius + obj2->radius)
+		{
+			return true;
+		}
+	}
+	else if (obj1->type == BALL && obj2->type == LEG)
 	{
+
+		legPos = obj2->GetPosition();
+		ballPos = obj1->GetPosition();
+
+		posDiff = gmtl::Vec3f(legPos[0], ballPos[1], legPos[2]) - ballPos;
+
+		if (legballdist == true)
+		{
+			cout << gmtl::length(posDiff) << endl;
+			legballdist = false;
+		}
 		if (gmtl::length(posDiff) < obj1->radius + obj2->radius)
 		{
 			return true;
@@ -418,18 +460,23 @@ void HandleCollisions()
 			if (checkObj != (*innerIt) && !IsWall(checkObj))
 			{
 				cIndex = AlreadyCollided(checkObj, (*innerIt));
-				if (IsCollided(checkObj, (*innerIt)) && cIndex == -1)
+				
+				
+				if (IsCollided(checkObj, (*innerIt)))
 				{
+
+					
 					collsionList.push_back(Collision(checkObj, (*innerIt)));
 					
 					collisionNormal = checkObj->GetPosition() - (*innerIt)->GetPosition();
 					collisionNormal = gmtl::makeNormal(collisionNormal);
 					collisionNormal[1] = 0.0f;
 
-					
-					
-					switch ((*innerIt)->type)
+					cout << gmtl::dot((checkObj->velocity - (*innerIt)->velocity), collisionNormal) << endl;
+					if (gmtl::dot((checkObj->velocity - (*innerIt)->velocity), collisionNormal) <= 1.0f)
 					{
+						switch ((*innerIt)->type)
+						{
 						case FRONT_WALL:
 						case BACK_WALL:
 							checkObj->velocity = restitutionWall * gmtl::Vec3f(checkObj->velocity[0], checkObj->velocity[1], -checkObj->velocity[2]);
@@ -440,6 +487,19 @@ void HandleCollisions()
 							checkObj->velocity = restitutionWall * gmtl::Vec3f(-checkObj->velocity[0], checkObj->velocity[1], checkObj->velocity[2]);
 							break;
 
+						case LEG:
+							normalRelativeVelocity = gmtl::dot((checkObj->velocity - (*innerIt)->velocity), collisionNormal)*collisionNormal;
+
+							checkObj->velocity = (checkObj->velocity - ((1 + restitutionBall)*normalRelativeVelocity)) / (1 + (checkObj->mass / (*innerIt)->mass));
+
+							if (bounce)
+							{
+								checkObj->velocity *= -1.2f;
+							}
+							
+
+							(*innerIt)->velocity = ((*innerIt)->velocity + ((1 + restitutionBall)*normalRelativeVelocity)) / (1 + ((*innerIt)->mass / checkObj->mass));
+							break;
 						case BALL:
 							normalRelativeVelocity = gmtl::dot((checkObj->velocity - (*innerIt)->velocity), collisionNormal)*collisionNormal;
 
@@ -447,6 +507,7 @@ void HandleCollisions()
 
 							(*innerIt)->velocity = ((*innerIt)->velocity + ((1 + restitutionBall)*normalRelativeVelocity)) / (1 + ((*innerIt)->mass / checkObj->mass));
 							break;
+						}
 					}
 										
 				}
@@ -454,7 +515,6 @@ void HandleCollisions()
 				{
 					collsionList.erase(collsionList.begin()+cIndex);
 				}
-
 			}
 		}
 
@@ -462,24 +522,34 @@ void HandleCollisions()
 }
 void ApplyForces()
 {
-	gmtl::Vec3f dragForce;
-	gmtl::Vec3f hitForce;
+	gmtl::Vec3f dragForce, hitForce, attractVec, attractForce;
+	
 
 	for (std::vector<SceneObject*>::iterator it = sceneGraph.begin(); it < sceneGraph.end(); ++it)
 	{	
 		if ((*it)->type == BALL)
 		{
-			hitForce = gmtl::makeNormal(gmtl::Vec3f(-view[2][0], 0, -view[2][2])) * hitScale;
-
-			dragForce = -drag * (*it)->velocity;
-
-			if (hit && it == sceneGraph.begin())
+			if (attract)
 			{
-				(*it)->acceleration = (1 / (*it)->mass) * (dragForce + hitForce);
+				attractVec = attractLeg->GetPosition() - (*it)->GetPosition();
+				attractForce = gmtl::makeNormal(gmtl::Vec3f(attractVec[0], 0.0f, attractVec[2])) * 2.0f;
 			}
 			else
 			{
-				(*it)->acceleration = (1 / (*it)->mass) * dragForce;
+				attractForce = ZERO_VECTOR;
+			}
+
+			hitForce = hitDirection * hitScale;
+
+			dragForce = -drag * (*it)->velocity;
+
+			if (hit && (*it) == hitBall)
+			{
+				(*it)->acceleration = (1 / (*it)->mass) * (dragForce + hitForce + attractForce);
+			}
+			else
+			{
+				(*it)->acceleration = (1 / (*it)->mass) * (dragForce + attractForce);
 			}
 			(*it)->velocity *= delta;
 			(*it)->acceleration *= delta;
@@ -488,6 +558,44 @@ void ApplyForces()
 		}
 		
 	}
+}
+
+void ProcessHit(gmtl::Rayf ray)
+{
+	gmtl::Spheref ball;
+	float t1, t2, smallestT = FLT_MAX;
+	int numHits;
+	hitBall = NULL;
+	for (std::vector<SceneObject*>::iterator it = sceneGraph.begin(); it < sceneGraph.end(); ++it)
+	{
+		if ((*it)->type == BALL)
+		{
+			ball = gmtl::Spheref((*it)->GetPosition(), (*it)->radius);
+			cout << ray << endl;
+			if (gmtl::intersect(ball, ray, numHits, t1, t2))
+			{
+
+				if (t1 < smallestT)
+				{
+					smallestT = t1;
+					hitBall = (*it);
+				}
+				else if (t2 < smallestT)
+				{
+					smallestT = t2;
+					hitBall = (*it);
+				}
+			}
+		}
+	}
+
+	if (hitBall != NULL)
+	{
+		hit = true;
+		hitDirection = gmtl::makeNormal(ray.getDir());
+		hitDirection = gmtl::Vec3f(hitDirection[0], 0.0f, hitDirection[2]);
+	}
+
 }
 void renderGraph(std::vector<SceneObject*> graph, gmtl::Matrix44f mv)
 {
@@ -525,10 +633,28 @@ void renderGraph(std::vector<SceneObject*> graph, gmtl::Matrix44f mv)
 
 void mouse(int button, int state, int x, int y)
 {
+	gmtl::Point3f P, eyePos;
+	gmtl::Vec3f ray;
+
 	if (state == GLUT_DOWN && button == GLUT_LEFT_BUTTON)
 	{
 		mouseX = x;
 		mouseY = y;
+
+		P = gmtl::Point3f(leftValue + ((mouseX + 0.5f) / screenWidth)*(rightValue - leftValue), topValue - ((mouseY + 0.5f) / screenHeight)*(topValue - bottomValue), -nearValue);
+
+		
+
+		originalView = gmtl::invert(view);
+
+		P = originalView * P;
+		cout << "P: " << P << endl;
+
+		eyePos = gmtl::Point3f(originalView[0][3], originalView[1][3], originalView[2][3]);
+
+		ray = P - eyePos;
+		cout << "Ray Dir: " << ray << endl;
+		ProcessHit(gmtl::Rayf(eyePos, ray));
 	}
 }
 
@@ -539,8 +665,8 @@ void mouseMotion(int x, int y)
 	mouseDeltaY = y - mouseY;
 
 
-	elevation += degreesToRadians(arcToDegrees(mouseDeltaY)) / (SCREEN_HEIGHT/2);
-	azimuth += degreesToRadians(arcToDegrees(mouseDeltaX)) / (SCREEN_WIDTH /2 );
+	elevation += degreesToRadians(arcToDegrees(mouseDeltaY)) / (screenHeight/2);
+	azimuth += degreesToRadians(arcToDegrees(mouseDeltaX)) / (screenWidth /2 );
 
 	cameraRotate();
 
@@ -625,11 +751,20 @@ void keyboard(unsigned char key, int x, int y)
 			delta = max(delta - 0.01f, 0.0f);
 			break;
 
+
+		case 'f':
+			bounce = (bounce ? false:true);
+			break;
+
+		case 'a':
+			attract = (attract ? false : true);
+			break;
+
 		case 'Z':
 			cameraZFactor += 10.f;
 			cameraZ = gmtl::makeTrans<gmtl::Matrix44f>(gmtl::Vec3f(0.0f, 0.0f, cameraZFactor));
 			cameraZ.setState(gmtl::Matrix44f::TRANS);
-			view = azimuthRotation * elevationRotation * cameraZ;
+			view = cameraTrans * azimuthRotation * elevationRotation * cameraZ;
 			gmtl::invert(view);			
 			break;
 
@@ -637,7 +772,7 @@ void keyboard(unsigned char key, int x, int y)
 			cameraZFactor -= 10.f;
 			cameraZ = gmtl::makeTrans<gmtl::Matrix44f>(gmtl::Vec3f(0.0f, 0.0f, cameraZFactor));
 			cameraZ.setState(gmtl::Matrix44f::TRANS);
-			view = azimuthRotation * elevationRotation * cameraZ;
+			view = cameraTrans * azimuthRotation * elevationRotation * cameraZ;
 			gmtl::invert(view);
 			break;
 
@@ -667,7 +802,6 @@ void idle()
 		ApplyForces();
 	}
 	
-
 	hit = false;
 	
 	cameraRotate();
@@ -681,10 +815,11 @@ void init()
 	elevation = azimuth = 0;
 	ballRadius = 4.0f;
 	ballDiameter = ballRadius * 2.0f;
-	hit = c_tableCenter = c_cueFollow = c_cue = false;
+	hit = c_tableCenter = c_cueFollow = c_cue = bounce = attract = false;
 	hitScale = 3.0f;
 	drag = 0.1f;
-	restitutionBall = restitutionWall = 0.2f;
+	restitutionBall =  0.0f;
+	restitutionWall = 1.0f;
 	simStep = 1;
 
 	delta = 1.0f;
@@ -725,7 +860,7 @@ void init()
 
 	nearValue = 1.0f;
 	farValue = 1000.0f;
-	topValue = SCREEN_HEIGHT / SCREEN_WIDTH;
+	topValue = screenHeight / screenWidth;
 	bottomValue = topValue * -1.0f;
 	rightValue = 1.0f;
 	leftValue = -1.0f;
@@ -742,7 +877,8 @@ void init()
 	cameraZ = gmtl::makeTrans<gmtl::Matrix44f>(gmtl::Vec3f(0.0f,0.0f,cameraZFactor));
 	cameraZ.setState(gmtl::Matrix44f::TRANS);
 	
-	elevation = degreesToRadians(30.0f);
+	//elevation = degreesToRadians(30.0f);
+	elevation = 0.0f;
 	azimuth = 0.0f;
 	
 	cameraRotate();
@@ -772,6 +908,8 @@ void display()
 }
 void reshape(int width, int height)
 {
+	screenWidth = float(width);
+	screenHeight = float(height);
 	glViewport(0,0,width, height);
 }
 #pragma endregion
@@ -786,9 +924,10 @@ int main(int argc, char** argv)
 
 	//Specify the display mode
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
-
+	screenWidth = SCREEN_WIDTH;
+	screenHeight = SCREEN_HEIGHT;
 	//Set the window size/dimensions
-	glutInitWindowSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+	glutInitWindowSize(screenWidth, screenHeight);
 
 	// Specify OpenGL version and core profile.
 	// We use 3.3 in thie class, not supported by very old cards
