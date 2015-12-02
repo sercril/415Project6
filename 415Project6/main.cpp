@@ -571,7 +571,7 @@ void ProcessHit(gmtl::Rayf ray)
 		if ((*it)->type == BALL)
 		{
 			ball = gmtl::Spheref((*it)->GetPosition(), (*it)->radius);
-			cout << ray << endl;
+			
 			if (gmtl::intersect(ball, ray, numHits, t1, t2))
 			{
 
@@ -642,18 +642,14 @@ void mouse(int button, int state, int x, int y)
 		mouseY = y;
 
 		P = gmtl::Point3f(leftValue + ((mouseX + 0.5f) / screenWidth)*(rightValue - leftValue), topValue - ((mouseY + 0.5f) / screenHeight)*(topValue - bottomValue), -nearValue);
-
 		
-
 		originalView = gmtl::invert(view);
 
 		P = originalView * P;
-		cout << "P: " << P << endl;
 
 		eyePos = gmtl::Point3f(originalView[0][3], originalView[1][3], originalView[2][3]);
 
 		ray = P - eyePos;
-		cout << "Ray Dir: " << ray << endl;
 		ProcessHit(gmtl::Rayf(eyePos, ray));
 	}
 }
@@ -685,23 +681,45 @@ void keyboard(unsigned char key, int x, int y)
 	{
 
 		case '1':
-			c_tableCenter = true;
-			c_cue = c_cueFollow = false;
+			hitScale = 1.0f;
+			break;
+
+		case '2':
+			hitScale = 2.0f;
+			break;
+
+		case '3':
+			hitScale = 3.0f;
+			break;
+
+		case '4':
+			hitScale = 4.0f;
+			break;
+
+		case '5':
+			hitScale = 5.0f;
+			break;
+
+		case '6':
+			hitScale = 6.0f;
+			break;
+
+		case '7':
+			hitScale = 7.0f;
+			break;
+
+		case '8':
+			hitScale = 8.0f;
+			break;
+
+		case '9':
+			hitScale = 9.0f;
 			break;
 			
-		case '2':
+		case 'f':
 			c_cueFollow = true;
 			c_cue = c_tableCenter = false;
 			break;
-		case '3':
-			cameraTrans = gmtl::makeTrans<gmtl::Matrix44f>(sceneGraph[0]->GetPosition());
-			c_cueFollow = c_tableCenter = false;
-			break;
-
-		case ' ':
-			hit = true;
-			break;
-
 
 		case 'k':
 			drag += 0.01f;
@@ -735,13 +753,7 @@ void keyboard(unsigned char key, int x, int y)
 			restitutionWall = max(0.0f, restitutionWall - 0.01f);
 			break;
 
-		case 'b': 
-			simStep += 1;
-			break;
-
-		case 'B':
-			simStep = max(simStep - 1,1);
-			break;
+		
 
 		case 'h':
 			delta += max(1.0f, delta + 0.01f);
@@ -752,7 +764,7 @@ void keyboard(unsigned char key, int x, int y)
 			break;
 
 
-		case 'f':
+		case 'b':
 			bounce = (bounce ? false:true);
 			break;
 
